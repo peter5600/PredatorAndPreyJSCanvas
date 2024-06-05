@@ -28,43 +28,128 @@
             When pred health reaches zero it then dies
             If predator moves onto prey cell it will reproduce(I imagine replace the prey) and then absorb the left over prey health
         */
-        
 
         const pixelSize = 4;
+        const drawType = "rect"; //Line looks pretty bad rn
+        const startHealth = 20;
+        const breedHealth = 30;
+        const rarity = 100;
+        const predatorRarity = 95;
+        const preyRarity = 5;
+
+        function genWorld() {
+            const world = []; //Array of arrays representing the world
+            //Generate world
+            for (let x = 0; x < c.width; x += pixelSize) {
+                const worldRow = [];
+                for (let y = 0; y < c.height; y += pixelSize) {
+                    const random = (Math.floor(Math.random() * rarity)) + 1
+                    if (random > predatorRarity) {
+                        worldRow.push({
+                            type: 'predator',
+                            health: startHealth
+                        })
+                    } else if (random > preyRarity) {
+                        worldRow.push({
+                            type: 'prey',
+                            health: startHealth
+                        })
+                    } else {
+                        worldRow.push({
+                            type: 'nothing',
+                        })
+                    }
+                }
+                world.push(worldRow)
+            }
+            return world;
+        }
+
+
         
-        
+
         world = genWorld()
-        const gameLoop = setInterval(() => {//Console.logging impacted performance
+        //Console.logging impacted performance
+        var animate = function () {
             ctx.fillStyle = 'black';
             ctx.fillRect(0, 0, c.width, c.height); //fillRect is faster than clearRect
-            for (let xIndex = 0; xIndex < c.width / pixelSize; xIndex++) {
-                for (let yIndex = 0; yIndex < c.height / pixelSize; yIndex++) {
-                    const y = yIndex * pixelSize;
-                    const x = xIndex * pixelSize;
-                    if (world[xIndex][yIndex].type == 'prey') {
-                        ctx.fillStyle = 'green';
-                        ctx.fillRect(x, y, pixelSize, pixelSize);
-                    } else if (world[xIndex][yIndex].type == 'predator') {
-                        ctx.fillStyle = 'red';
-                        ctx.fillRect(x, y, pixelSize, pixelSize);
+            ctx.lineWidth = pixelSize;
+            if (drawType == 'rect') {
+                for (let xIndex = 0; xIndex < c.width / pixelSize; xIndex++) {
+                    for (let yIndex = 0; yIndex < c.height / pixelSize; yIndex++) {
+                        const y = yIndex * pixelSize;
+                        const x = xIndex * pixelSize;
+                        if (world[xIndex][yIndex].type == 'prey') {
+                            ctx.fillStyle = 'green';
+                            ctx.fillRect(x, y, pixelSize, pixelSize);
+                        } else if (world[xIndex][yIndex].type == 'predator') {
+                            ctx.fillStyle = 'red';
+                            ctx.fillRect(x, y, pixelSize, pixelSize);
+                        }
+
                     }
-                    
+                }
+            } else if (drawType == 'line') {
+                for (let xIndex = 0; xIndex < c.width / pixelSize; xIndex++) {
+                    let currentType = 'empty';
+                    let startX = 0;
+                    let startY = 0;
+                    let currentX = 0;
+                    let currentY = 0;
+                    for (let yIndex = 0; yIndex < c.height / pixelSize; yIndex++) {
+                        const y = yIndex * pixelSize;
+                        const x = xIndex * pixelSize;
+
+                        if (currentType != world[xIndex][yIndex].type && currentType != 'empty') {
+                            if (currentType != 'nothing') {
+                                ctx.beginPath() //Unresponsive if its anywhere but here
+                                ctx.moveTo(startX, startY);
+                                ctx.lineTo(currentX, currentY);
+                                ctx.closePath()
+                                ctx.stroke()
+                            }
+                            currentType = 'empty'
+
+                        } else {
+                            if (currentType == 'empty') {
+                                currentType = world[xIndex][yIndex].type;
+                                switch (world[xIndex][yIndex].type) {
+                                    case "prey":
+                                        ctx.strokeStyle = 'green';
+                                        break;
+                                    case "predator":
+                                        ctx.strokeStyle = 'red';
+                                        break;
+                                }
+                                startX = x;
+                                startY = y;
+                                currentX = startX;
+                                currentY = startY;
+                            } else {
+                                currentX = x;
+                                currentY = y;
+                            }
+                        }
+
+                    }
                 }
             }
+
             let nonNothingDetected = false;
+            
             for (let xIndex = 0; xIndex < c.width / pixelSize; xIndex++) {
                 for (let yIndex = 0; yIndex < c.height / pixelSize; yIndex++) {
                     const y = yIndex * pixelSize;
                     const x = xIndex * pixelSize;
                     //Draw and then process
-                    const directionX = Math.floor(Math.random() * 3) -1
-                    const directionY = Math.floor(Math.random() * 3) -1
-                    if(directionX ==0 && directionY == 0){
-                        continue;//Can't look at self
+                    const directionX = Math.floor(Math.random() * 3) - 1
+                    const directionY = Math.floor(Math.random() * 3) - 1
+                    if (directionX == 0 && directionY == 0) {
+                        continue; //Can't look at self
                     }
                     let newX = xIndex + directionX;
                     let newY = yIndex + directionY;
-                    
+
                     if (newX < 0 || newY < 0 || newX >= c.width / pixelSize || newY >= c.height / pixelSize) {
                         continue;
                     }
@@ -77,26 +162,28 @@
                     } else if (world[newX][newY].type == 'prey' &&
                         world[xIndex][yIndex].type == 'predator') {
                         //Eat it
-                        world[xIndex][yIndex].health = world[xIndex][yIndex].health + world[newX][newY].health;//Absorb the prey health
+                        world[xIndex][yIndex].health = world[xIndex][yIndex].health + world[newX][newY]
+                            .health; //Absorb the prey health
                         //Then create the new fresh predator
                         world[newX][newY].type = 'predator'
-                        world[newX][newY].health = 10;
+                        world[newX][newY].health = 9;
                         nonNothingDetected = true;
-                    } else if (world[newX][newY].type == 'nothing' && world[xIndex][yIndex].type == 'prey' || world[xIndex][yIndex].type == 'predator') {
+                    } else if (world[newX][newY].type == 'nothing' && world[xIndex][yIndex].type == 'prey' || world[
+                            xIndex][yIndex].type == 'predator') {
                         //move there
-                        if(world[xIndex][yIndex].type == 'prey' && world[xIndex][yIndex].health > 15){
+                        if (world[xIndex][yIndex].type == 'prey' && world[xIndex][yIndex].health > breedHealth) {
                             //if prey is moving to new space and its greater than 15 don't move just make a new one
                             world[newX][newY].type = 'prey'
-                            world[newX][newY].health = 10;
-                            world[xIndex][yIndex].health = 10;//Reset prey that just reproduced
-                        }else{
+                            world[newX][newY].health = startHealth;
+                            world[xIndex][yIndex].health = startHealth; //Reset prey that just reproduced
+                        } else {
                             world[newX][newY].type = world[xIndex][yIndex].type
-                            if(world[xIndex][yIndex].type == 'predator'){
-                                world[newX][newY].health = world[xIndex][yIndex].health - 1;
-                            }else{
+                            if (world[xIndex][yIndex].type == 'predator') {
+                                world[newX][newY].health = world[xIndex][yIndex].health - 3;
+                            } else {
                                 world[newX][newY].health = world[xIndex][yIndex].health + 1;
                             }
-                            
+
                             world[xIndex][yIndex] = {
                                 type: 'nothing'
                             }
@@ -105,42 +192,15 @@
                     }
                 }
             }
-            if(!nonNothingDetected){
+            if (!nonNothingDetected) {
                 //No pixels left
                 world = genWorld()
             }
-        }, 1000/60)
-        //clearInterval(gameLoop)
-function genWorld(){
-    const predatorRarity = (Math.random() * 100) + 1//Disable for now
-    const preyRarity = (Math.random() * 100) + 1
-    const world = []; //Array of arrays representing the world
-        //Generate world
-        const rarity = 100;
-        for (let x = 0; x < c.width; x += pixelSize) {
-            const worldRow = [];
-            for (let y = 0; y < c.height; y += pixelSize) {
-                const random = (Math.floor(Math.random(0, 2) * rarity)) + 1 
-                if (random > 99) {
-                    worldRow.push({
-                        type: 'predator',
-                        health: 10
-                    })
-                } else if (random > preyRarity) {
-                    worldRow.push({
-                        type: 'prey',
-                        health: 100
-                    })
-                } else {
-                    worldRow.push({
-                        type: 'nothing',
-                    })
-                }
-            }
-            world.push(worldRow)
+            requestAnimationFrame(function () {
+                animate();
+            });
         }
-        return world;
-}
+        animate()
     </script>
 </body>
 
